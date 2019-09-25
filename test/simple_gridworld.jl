@@ -3,7 +3,7 @@ using Test
 using POMDPTesting
 using NBInclude
 
-let 
+let
     problem = SimpleGridWorld()
 
     policy = RandomPolicy(problem)
@@ -12,8 +12,8 @@ let
 
     hist = simulate(sim, problem, policy, GWPos(1,1))
 
-    for i in 1:length(hist.action_hist)
-        td = transition(problem, hist.state_hist[i], hist.action_hist[i])
+    for (s, a) in zip(state_hist(hist), action_hist(hist))
+        td = transition(problem, s, a)
         if td isa SparseCat
             @test sum(td.probs) ≈ 1.0 atol=0.01
             for p in td.probs
@@ -43,9 +43,17 @@ let
     POMDPModelTools.render(problem, stp, color=s->reward(problem,s))
     POMDPModelTools.render(problem, stp, color=s->rand())
     POMDPModelTools.render(problem, stp, color=s->"yellow")
+
+    ss = collect(states(problem))
+    isd = initialstate_distribution(problem)
+    for s in ss
+        if !isterminal(problem, s)
+            @test s in support(isd)
+            @test pdf(isd, s) > 0.0
+        end
+    end
 end
 
-# disabled until POMDPSimulators v0.1.2 is tagged
 let
     @nbinclude(joinpath(dirname(@__FILE__), "..", "notebooks", "GridWorld Visualization.ipynb"))
 end

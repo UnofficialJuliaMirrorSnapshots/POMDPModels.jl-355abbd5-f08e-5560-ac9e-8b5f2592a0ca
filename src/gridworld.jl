@@ -40,8 +40,20 @@ function POMDPs.stateindex(mdp::SimpleGridWorld, s::AbstractVector{Int})
     end
 end
 
-POMDPs.initialstate(mdp::SimpleGridWorld, rng::AbstractRNG) = GWPos(rand(rng, 1:mdp.size[1]), rand(rng, 1:mdp.size[2]))
+struct GWUniform
+    size::Tuple{Int, Int}
+end
+Base.rand(rng::AbstractRNG, d::GWUniform) = GWPos(rand(rng, 1:d.size[1]), rand(rng, 1:d.size[2]))
+function POMDPs.pdf(d::GWUniform, s::GWPos)
+    if all(1 .<= s[1] .<= d.size)
+        return 1/prod(d.size)
+    else
+        return 0.0
+    end
+end
+POMDPs.support(d::GWUniform) = (GWPos(x, y) for x in 1:d.size[1], y in 1:d.size[2])
 
+POMDPs.initialstate_distribution(mdp::SimpleGridWorld) = GWUniform(mdp.size)
 
 # Actions
 
@@ -55,7 +67,6 @@ const aind = Dict(:up=>1, :down=>2, :left=>3, :right=>4)
 POMDPs.actionindex(mdp::SimpleGridWorld, a::Symbol) = aind[a]
 
 
-
 # Transitions
 
 POMDPs.isterminal(m::SimpleGridWorld, s::AbstractVector{Int}) = any(s.<0)
@@ -64,12 +75,12 @@ function POMDPs.transition(mdp::SimpleGridWorld, s::AbstractVector{Int}, a::Symb
     if s in mdp.terminate_from || isterminal(mdp, s)
         return Deterministic(GWPos(-1,-1))
     end
-    
+
     destinations = MVector{n_actions(mdp)+1, GWPos}(undef)
     destinations[1] = s
 
-    # probs = MVector{n_actions(mdp)+1, Float64}() 
-    probs = @MVector(zeros(n_actions(mdp)+1)) 
+    # probs = MVector{n_actions(mdp)+1, Float64}()
+    probs = @MVector(zeros(n_actions(mdp)+1))
     for (i, act) in enumerate(actions(mdp))
         if act == a
             prob = mdp.tprob # probability of transitioning to the desired cell
